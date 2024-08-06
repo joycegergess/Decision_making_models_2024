@@ -3,7 +3,11 @@ import matplotlib.pyplot as plt
 
 # Parameters
 num_trials = 10000
+<<<<<<< HEAD
 sigma = 1.0  # Standard deviation (perceptual noise)
+=======
+sigma = 2.0  # Standard deviation (perceptual noise)
+>>>>>>> 21dd999 (commit)
 decision_boundary = 0  # Decision boundary (b)
 
 # Generate means in the range [0, 4]. Means will always be on the right side but their distance from DB will vary.
@@ -28,7 +32,11 @@ def calculate_average_accuracy(percepts, percepts_correct, means, bins):
     high_conf_accuracies = np.full(len(bins) - 1, np.nan)
 
     for i in range(len(bins) - 1):
+<<<<<<< HEAD
         bin_mask = (percepts >= bins[i]) & (percepts < bins[i + 1])
+=======
+        bin_mask = (percepts >= bins[i]) & (percepts < bins[i + 1]) #identifies which percepts fall into bin
+>>>>>>> 21dd999 (commit)
 
         # Compute discriminability for percepts in the bin
         bin_percepts = percepts[bin_mask]
@@ -36,16 +44,26 @@ def calculate_average_accuracy(percepts, percepts_correct, means, bins):
         bin_means = means[bin_mask]
 
         # Low-confidence trials
+<<<<<<< HEAD
         low_conf_mask = (np.abs(bin_means - decision_boundary) <= 0.5)
         if np.any(low_conf_mask):
             # checks if any percepts in current bin meet low_bin_mask criteria, if yes then....
+=======
+        low_conf_mask = (np.abs(bin_means - decision_boundary) <= 0.5
+        if np.any(low_conf_mask):
+            # checks if any percepts in current bin meet low_conf_mask criteria, if yes then....
+>>>>>>> 21dd999 (commit)
             low_conf_accuracies[i] = np.mean(bin_percepts_correct[low_conf_mask])
             # filter percepts_correct array to include only percepts that fit within low_bin_mask criteria and calulate their mean
 
         # High-confidence trials
         high_conf_mask = (np.abs(bin_means - decision_boundary) > 0.5)
         if np.any(high_conf_mask):
+<<<<<<< HEAD
             # checks if any percepts in current bin meet high_bin_mask criteria, if yes then...
+=======
+            # checks if any percepts in current bin meet high_conf_mask criteria, if yes then...
+>>>>>>> 21dd999 (commit)
             high_conf_accuracies[i] = np.mean(bin_percepts_correct[high_conf_mask])
             # filters percepts_correct array to include only percepts that fit within high_bin_mask criteria and calulates their mean
 
@@ -92,7 +110,6 @@ plt.legend()
 plt.grid(True)
 plt.axhline(0.5, color='grey', linestyle='--')
 plt.show()
-
 
 
 
