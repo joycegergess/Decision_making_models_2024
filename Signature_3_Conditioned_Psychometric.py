@@ -55,24 +55,11 @@ def calculate_average_accuracy(percepts, percepts_correct, means, bins):
 low_conf_accuracies, high_conf_accuracies = calculate_average_accuracy(percepts, percepts_correct, means, bins)
 
 
-# Function to print low-confidence percepts and their corresponding accuracy
-def print_low_confidence_percepts(percepts, percepts_correct, means, bins, decision_boundary):
-    for i in range(len(bins) - 1):
-        bin_mask = (percepts >= bins[i]) & (percepts < bins[i + 1])
-        bin_percepts = percepts[bin_mask]
-        bin_percepts_correct = percepts_correct[bin_mask]
-        bin_means = means[bin_mask]
 
-        # Low-confidence trials
-        low_conf_mask = (np.abs(bin_means - decision_boundary) <= 0.5)
-        if np.any(low_conf_mask):
-            low_conf_percepts = bin_percepts[low_conf_mask]
-            low_conf_accuracies = bin_percepts_correct[low_conf_mask]
-
-            print(f"\nBin {i + 1}: {bins[i]:.2f} to {bins[i + 1]:.2f}")
-            print("  Low-confidence percepts and their accuracy:")
-            for percept, accuracy in zip(low_conf_percepts, low_conf_accuracies):
-                print(f"    Percept: {percept:.2f}, Accuracy: {accuracy:.2f}")
+print(f"\nBin {i + 1}: {bins[i]:.2f} to {bins[i + 1]:.2f}")
+print("  Low-confidence percepts and their accuracy:")
+for percept, accuracy in zip(low_conf_percepts, low_conf_accuracies):
+    print(f"    Percept: {percept:.2f}, Accuracy: {accuracy:.2f}")
 
 
 # Call the function
