@@ -19,6 +19,7 @@ percepts = np.random.normal(means, sigma)
 
 # Calculate distance of each mean from decision-boundary, this will be my x-axis, how discriminable is the given stimulus (x)
 distance_from_boundary = means - decision_boundary
+distance_from_db = percepts - decision_boundary
 
 # Define bins for the full x-axis range
 bins = np.linspace(-4, 4, 25)
@@ -26,6 +27,8 @@ bins = np.linspace(-4, 4, 25)
 # Define confidence masks (you had these variables at the end in your earlier code)
 low_conf_mask = (np.abs(means - decision_boundary) <= 0.5)
 high_conf_mask = (np.abs(means - decision_boundary) > 0.5)
+
+percepts_right_side = percepts[distance_from_db > 0]
 
 # Initialize lists to store results
 bin_centers = []
@@ -42,7 +45,10 @@ for i in range(len(bins) - 1):
 
     # Low confidence trials
     low_conf_bin_mask = bin_mask & low_conf_mask
+    if np.any(low_conf_bin_mask):
+        prob_choosing_right_low_conf = np.mean(percepts_right_side[low_conf_bin_mask])
 
     # High confidence trials
     high_conf_bin_mask = bin_mask & high_conf_mask
-
+    if np.any(high_conf_bin_mask):
+        prob_choosing_right_high_conf = np.mean(percepts_right_side[high_conf_bin_mask])
