@@ -20,7 +20,6 @@ percepts_incorrect = ~percepts_correct  # Incorrect percepts are the opposite of
 # Calculate absolute distance of each mean from decision-boundary, this will be my x-axis, how discriminable is the given stimulus
 distance_from_boundary = np.abs(means - decision_boundary)
 
-
 # Define the bin edges for the 20-point bins
 bin_edges = np.linspace(0, 4, 21)
 
