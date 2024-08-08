@@ -6,7 +6,7 @@ num_trials = 10000
 sigma = 1.0  # Standard deviation (perceptual noise remains same for all trials)
 decision_boundary = 0  # Decision boundary (b)
 
-# Randomly sample 100 means (trials) which all differ in how far they are to the decision boundary
+# Randomly sample 10000 means (trials) which all differ in how far they are to the decision boundary
 means = np.linspace(-4, 4, num_trials)
 
 # Generate a random percept for each of these means and associate them with an outcome
@@ -27,6 +27,7 @@ bin_edges = np.linspace(0, 4, 21)
 # Arrays to store bin centers and confidence values for correct and incorrect outcomes
 bin_centers = []
 confidence_values_correct = []
+
 confidence_values_incorrect = []
 
 # Bias to adjust the confidence level at neutral evidence to 0.75
