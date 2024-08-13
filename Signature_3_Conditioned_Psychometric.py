@@ -3,100 +3,89 @@ import matplotlib.pyplot as plt
 
 # Parameters
 num_trials = 10000
-<<<<<<< HEAD
 sigma = 1.0  # Standard deviation (perceptual noise)
-=======
-sigma = 2.0  # Standard deviation (perceptual noise)
->>>>>>> 21dd999 (commit)
 decision_boundary = 0  # Decision boundary (b)
 
-# Generate means in the range [0, 4]. Means will always be on the right side but their distance from DB will vary.
-means = np.random.uniform(0, 4, num_trials)
+# Randomly sample 10000 means (trials) which all differ in how far they are to the decision boundary
+means = np.linspace(-3, 3, num_trials)
 
-# Generate percepts for each mean
+# Generate a random percept for each of these means
 percepts = np.random.normal(means, sigma)
 
-# Determine if each percept is correct (i.e., if they are on same side as their mean)
-percepts_correct = (percepts > decision_boundary).astype(int)
-    # astype(int) to convert 'True' to 1 and 'False' to 0
+# Calculate distance of each mean from the decision boundary
+distance_from_boundary = means - decision_boundary
+distance_from_db = percepts - decision_boundary
 
 # Define bins for the full x-axis range
 bins = np.linspace(-4, 4, 25)
 
-# Function to calculate average accuracy from bin counts for both confidence levels
-def calculate_average_accuracy(percepts, percepts_correct, means, bins):
-    # Create arrays to store average accuracy for each bin
-    low_conf_accuracies = np.full(len(bins) - 1, np.nan)
-        # len(bins) - 1 gives # of elements in array
-        # np.nan will start the array w/ Not A Number values
-    high_conf_accuracies = np.full(len(bins) - 1, np.nan)
+# Define confidence masks
+low_conf_mask = (np.abs(percepts - decision_boundary) < 0.5)
+med_conf_mask = (np.abs(percepts - decision_boundary) >= 0.5) & (np.abs(percepts - decision_boundary) < 1.1)
+high_conf_mask = (np.abs(percepts - decision_boundary) >= 1.1)
+
+# Initialize lists to store results
+bin_centers = []
+prob_choosing_right_low_conf = []
+prob_choosing_right_med_conf = []
+prob_choosing_right_high_conf = []
+
+# Calculate P(choosing right)
+def calculate_prob_choosing_right_side(percepts, distance_from_boundary, distance_from_db, bins):
+    prob_choosing_right_low_conf = []
+    prob_choosing_right_med_conf = []
+    prob_choosing_right_high_conf = []
 
     for i in range(len(bins) - 1):
-<<<<<<< HEAD
-        bin_mask = (percepts >= bins[i]) & (percepts < bins[i + 1])
-=======
-        bin_mask = (percepts >= bins[i]) & (percepts < bins[i + 1]) #identifies which percepts fall into bin
->>>>>>> 21dd999 (commit)
+        # Define the bin range
+        bin_mask = (distance_from_boundary >= bins[i]) & (distance_from_boundary < bins[i + 1])
 
-        # Compute discriminability for percepts in the bin
-        bin_percepts = percepts[bin_mask]
-        bin_percepts_correct = percepts_correct[bin_mask]
-        bin_means = means[bin_mask]
+        # Calculate bin center for the point on the figure
+        bin_center = (bins[i] + bins[i + 1]) / 2
+        bin_centers.append(bin_center)
 
-        # Low-confidence trials
-<<<<<<< HEAD
-        low_conf_mask = (np.abs(bin_means - decision_boundary) <= 0.5)
-        if np.any(low_conf_mask):
-            # checks if any percepts in current bin meet low_bin_mask criteria, if yes then....
-=======
-        low_conf_mask = (np.abs(bin_means - decision_boundary) <= 0.5
-        if np.any(low_conf_mask):
-            # checks if any percepts in current bin meet low_conf_mask criteria, if yes then....
->>>>>>> 21dd999 (commit)
-            low_conf_accuracies[i] = np.mean(bin_percepts_correct[low_conf_mask])
-            # filter percepts_correct array to include only percepts that fit within low_bin_mask criteria and calulate their mean
+        # Low confidence trials
+        low_conf_bin_mask = bin_mask & low_conf_mask
+        if np.any(low_conf_bin_mask):
+            prob_choosing_right_low_conf.append(np.mean(distance_from_db[low_conf_bin_mask] > 0))
+        else:
+            prob_choosing_right_low_conf.append(0)
 
-        # High-confidence trials
-        high_conf_mask = (np.abs(bin_means - decision_boundary) > 0.5)
-        if np.any(high_conf_mask):
-<<<<<<< HEAD
-            # checks if any percepts in current bin meet high_bin_mask criteria, if yes then...
-=======
-            # checks if any percepts in current bin meet high_conf_mask criteria, if yes then...
->>>>>>> 21dd999 (commit)
-            high_conf_accuracies[i] = np.mean(bin_percepts_correct[high_conf_mask])
-            # filters percepts_correct array to include only percepts that fit within high_bin_mask criteria and calulates their mean
+        # Medium confidence trials
+        med_conf_bin_mask = bin_mask & med_conf_mask
+        if np.any(med_conf_bin_mask):
+            prob_choosing_right_med_conf.append(np.mean(distance_from_db[med_conf_bin_mask] > 0))
+        else:
+            prob_choosing_right_med_conf.append(0)
 
-    return low_conf_accuracies, high_conf_accuracies
+        # High confidence trials
+        high_conf_bin_mask = bin_mask & high_conf_mask
+        if np.any(high_conf_bin_mask):
+            prob_choosing_right_high_conf.append(np.mean(distance_from_db[high_conf_bin_mask] > 0))
+        else:
+            prob_choosing_right_high_conf.append(0)
 
-# Compute average accuracies for both confidence levels
-low_conf_accuracies, high_conf_accuracies = calculate_average_accuracy(percepts, percepts_correct, means, bins)
+    return prob_choosing_right_low_conf, prob_choosing_right_med_conf, prob_choosing_right_high_conf
 
-
-
-print(f"\nBin {i + 1}: {bins[i]:.2f} to {bins[i + 1]:.2f}")
-print("  Low-confidence percepts and their accuracy:")
-for percept, accuracy in zip(low_conf_percepts, low_conf_accuracies):
-    print(f"    Percept: {percept:.2f}, Accuracy: {accuracy:.2f}")
-
-
-# Call the function
-print_low_confidence_percepts(percepts, percepts_correct, means, bins, decision_boundary)
+# Compute probabilities
+prob_choosing_right_low_conf, prob_choosing_right_med_conf, prob_choosing_right_high_conf = calculate_prob_choosing_right_side(percepts, distance_from_boundary, distance_from_db, bins)
 
 # Compute bin centers
 bin_centers = (bins[:-1] + bins[1:]) / 2
 
-# Plot psychometric curves
+# Plot
 plt.figure(figsize=(10, 6))
-plt.plot(bin_centers, low_conf_accuracies, label='Low confidence', color='red', marker='o', linestyle='-')
-plt.plot(bin_centers, high_conf_accuracies, label='High confidence', color='blue', marker='o', linestyle='-')
+plt.plot(bin_centers, prob_choosing_right_low_conf, label='Low conf', color='blue', marker='o', linestyle='-')
+plt.plot(bin_centers, prob_choosing_right_med_conf, label='Med conf', color='green', marker='o', linestyle='-')
+plt.plot(bin_centers, prob_choosing_right_high_conf, label='High conf', color='red', marker='o', linestyle='-')
 plt.xlabel('Discriminability')
-plt.ylabel('P(Choosing Right)')
-plt.title('Conditioned Psychometric Curve')
+plt.ylabel('Choosing Right')
+plt.title('Conditioned Psychometric')
 plt.legend()
 plt.grid(True)
 plt.axhline(0.5, color='grey', linestyle='--')
 plt.show()
+
 
 
 
