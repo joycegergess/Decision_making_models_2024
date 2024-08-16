@@ -1,6 +1,3 @@
-import numpy as np
-import matplotlib.pyplot as plt
-
 # Parameters
 num_trials = 10000
 sigma = 1.0  # Standard deviation (perceptual noise remains same for all trials)
@@ -21,13 +18,23 @@ percepts_incorrect = ~percepts_correct  # Incorrect percepts are the opposite of
 distance_from_boundary = samples - decision_boundary
 
 # Define bins and calculate the empirical probability of correct percepts
-bins = np.linspace(-3, 3, 100)
+bins = np.linspace(-3, 3, 50)
 bin_centers = []
 prob_correct = []
+sem_values = []  # Array to store SEM values
 
 for i in range(len(bins) - 1):
     bin_mask = (samples >= bins[i]) & (samples < bins[i + 1])
-    prob_correct.append(percepts_correct[bin_mask].mean())
+    bin_percepts_correct = percepts_correct[bin_mask]
+
+    prob_correct.append((bin_percepts_correct.mean()))
+
+    # Calculate SEM for the current bin
+    if len(bin_percepts_correct) > 1:
+        sem = np.std(bin_percepts_correct, ddof=1) / np.sqrt(len(bin_percepts_correct))
+    else:
+        sem = 0  # If there is only one percept or none in the bin, SEM is 0
+    sem_values.append(sem)
 
     # Calculate the center of the current bin
     bin_center = (bins[i] + bins[i + 1]) / 2
@@ -36,12 +43,13 @@ for i in range(len(bins) - 1):
 # Convert lists to numpy arrays for plotting
 bin_centers = np.array(bin_centers)
 prob_correct = np.array(prob_correct)
+sem_values = np.array(sem_values)
 
 # Create the plot
 plt.figure(figsize=(10, 6))
 
-# Plot the blue linked points for empirical P(reward)
-plt.plot(bin_centers, prob_correct, color='blue', label='P(reward)', marker='o')
+# Plot the blue linked points for empirical P(reward) with SEM error bars
+plt.errorbar(bin_centers, prob_correct, yerr=sem_values, color='blue', label='P(reward)', marker='o', linestyle='-')
 
 # Scatter plot with green ticks for correct percepts and red ticks for incorrect percepts
 plt.scatter(samples[percepts_correct], np.zeros_like(samples[percepts_correct]), color='green', marker='|', s=100, label='Correct Percepts')
