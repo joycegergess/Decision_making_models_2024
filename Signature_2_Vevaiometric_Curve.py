@@ -1,13 +1,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Function to calculate SEM
+def calculate_sem(data):
+    return np.std(data, ddof=1) / np.sqrt(len(data))
+
 # Parameters
 num_trials = 10000
 sigma = 1.0  # Standard deviation (perceptual noise remains same for all trials)
 decision_boundary = 0  # Decision boundary (b)
 
-# Randomly sample 10000 means (trials) which all differ in how far they are to the decision boundary
-means = np.linspace(-4, 4, num_trials)
+# Randomly sample 100 means (trials) which all differ in how far they are to the decision boundary
+means = np.linspace(-3, 3, num_trials)
 
 # Generate a random percept for each of these means and associate them with an outcome
 samples = np.random.normal(means, sigma)
@@ -21,13 +25,14 @@ percepts_incorrect = ~percepts_correct  # Incorrect percepts are the opposite of
 distance_from_boundary = np.abs(means - decision_boundary)
 
 # Define the bin edges for the 20-point bins
-bin_edges = np.linspace(0, 4, 21)
+bin_edges = np.linspace(0, 3, 21)
 
 # Arrays to store bin centers and confidence values for correct and incorrect outcomes
 bin_centers = []
 confidence_values_correct = []
-
 confidence_values_incorrect = []
+sem_values_correct = []
+sem_values_incorrect = []
 
 # Bias to adjust the confidence level at neutral evidence to 0.75
 neutral_confidence = 0.75
@@ -55,23 +60,33 @@ for i in range(len(bin_edges) - 1):
         confidence_correct = 0.5 + (neutral_confidence - 0.5) * (confidence_correct / 0.5)
         confidence_incorrect = 0.5 + (neutral_confidence - 0.5) * (confidence_incorrect / 0.5)
 
+        # Calculate SEM
+        sem_correct = calculate_sem(bin_percepts_correct)
+        sem_incorrect = calculate_sem(bin_percepts_incorrect)
+
     else:
         confidence_correct = 0.5
         confidence_incorrect = 0.5
 
     confidence_values_correct.append(confidence_correct)
     confidence_values_incorrect.append(confidence_incorrect)
+    sem_values_correct.append(sem_correct)
+    sem_values_incorrect.append(sem_incorrect)
     # this appends (adds) the calculated midpoints (bin_center) to the bin_centers array created above
 
 # Convert lists to arrays
 bin_centers = np.array(bin_centers)
 confidence_values_correct = np.array(confidence_values_correct)
 confidence_values_incorrect = np.array(confidence_values_incorrect)
+sem_values_correct = np.array(sem_values_correct)
+sem_values_incorrect = np.array(sem_values_incorrect)
 
 # Plotting
 plt.figure(figsize=(10, 10))
 plt.plot(bin_centers, confidence_values_correct, 'g-', label='Correct')
 plt.plot(bin_centers, confidence_values_incorrect, 'r-', label='Incorrect')
+plt.errorbar(bin_centers, confidence_values_correct, yerr=sem_values_correct, fmt='g-', label='Correct', capsize=5)
+plt.errorbar(bin_centers, confidence_values_incorrect, yerr=sem_values_incorrect, fmt='r-', label='Incorrect', capsize=5)
 plt.axhline(y=0.75, color='k', linestyle='--')  # Line at y=0.75
 plt.xlabel('Discriminability')
 plt.ylabel('Confidence')
@@ -79,5 +94,4 @@ plt.ylim(0.5, 1)
 plt.title('Vevaiometric Curve')
 plt.legend()
 plt.show()
-
 
