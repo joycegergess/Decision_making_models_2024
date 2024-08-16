@@ -1,6 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Function to calculate SEM
+def calculate_sem(data):
+    return np.std(data, ddof=1) / np.sqrt(len(data))
+
 # Parameters
 num_trials = 10000
 sigma = 1.0  # Standard deviation (perceptual noise remains same for all trials)
@@ -20,11 +24,12 @@ percepts_correct = (samples > decision_boundary) == (means > decision_boundary)
 distance_from_boundary = np.abs(samples - decision_boundary)
 
 # Define the bin edges for the 20-point bins
-bin_edges = np.linspace(0, 4, 21)
+bin_edges = np.linspace(0, 3, 21)
 
 # Arrays to store bin centers and confidence values
 bin_centers = []
 confidence_values = []
+sem_values = []
 
 # Calculate confidence for each bin
 for i in range(len(bin_edges) - 1):
@@ -49,15 +54,19 @@ for i in range(len(bin_edges) - 1):
         # this code allows me to check if bin_outcomes is not empty (has at least one generated percept)
         # if bin has outcomes, can calculate the mean
         confidence = np.mean(bin_percepts_correct)  # Outcomes are binary (0 and 1), mean is proportion of 1s (correct outcomes)
+        sem = calculate_sem(bin_percepts_correct)
     else:
         confidence = 0  # If the bin has no outcomes, set confidence to 0
+        sem = 0
 
     confidence_values.append(confidence)
     # adds calculated confidence values to confidence_values list
+    sem_values.append(sem)
 
 # Convert lists to arrays
 bin_centers = np.array(bin_centers)
 confidence_values = np.array(confidence_values)
+sem_values = np.array(sem_values)
 
 # Iterate through bin centers and confidence values
 for center, confidence in zip(bin_centers, confidence_values):
@@ -65,7 +74,7 @@ for center, confidence in zip(bin_centers, confidence_values):
 
 # Plotting
 plt.figure(figsize=(10, 10))
-plt.plot(bin_centers, confidence_values, 'o-')
+plt.errorbar(bin_centers, confidence_values, yerr=sem_values, color='blue', marker='o', linestyle='-')
 plt.axhline(y=0.5, color='gray', linestyle='--')
 
 plt.xlabel('Distance to DB')
