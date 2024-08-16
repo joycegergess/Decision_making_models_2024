@@ -83,8 +83,6 @@ sem_values_incorrect = np.array(sem_values_incorrect)
 
 # Plotting
 plt.figure(figsize=(10, 10))
-plt.plot(bin_centers, confidence_values_correct, 'g-', label='Correct')
-plt.plot(bin_centers, confidence_values_incorrect, 'r-', label='Incorrect')
 plt.errorbar(bin_centers, confidence_values_correct, yerr=sem_values_correct, fmt='g-', label='Correct', capsize=5)
 plt.errorbar(bin_centers, confidence_values_incorrect, yerr=sem_values_incorrect, fmt='r-', label='Incorrect', capsize=5)
 plt.axhline(y=0.75, color='k', linestyle='--')  # Line at y=0.75
