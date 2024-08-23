@@ -1,95 +1,158 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 # Function to calculate SEM
 def calculate_sem(data):
     return np.std(data, ddof=1) / np.sqrt(len(data))
 
 # Parameters
 num_trials = 10000
-sigma = 1.0  # Standard deviation (perceptual noise remains same for all trials)
+sigma = 1.0  # Standard deviation (perceptual noise remains the same for all trials)
 decision_boundary = 0  # Decision boundary (b)
 
-# Randomly sample 100 means (trials) which all differ in how far they are to the decision boundary
-means = np.linspace(-3, 3, num_trials)
+# Signature 1: Calibration Curve
 
-# Generate a random percept for each of these means and associate them with an outcome
-samples = np.random.normal(means, sigma)
+# Randomly generate different means for trials (for calibration curve)
+calibration_means = np.random.uniform(-3, 3, num_trials)
 
-# Determine whether the percept is correct
-# A percept is correct if the sample is on the same side of the decision boundary as its mean
-percepts_correct = ((samples > decision_boundary) & (means > decision_boundary)) | ((samples < decision_boundary) & (means < decision_boundary))
-percepts_incorrect = ~percepts_correct  # Incorrect percepts are the opposite of correct percepts
+# Generate samples for calibration curve
+calibration_samples = np.random.normal(calibration_means, sigma)
 
-# Calculate absolute distance of each mean from decision-boundary, this will be my x-axis, how discriminable is the given stimulus
-distance_from_boundary = np.abs(means - decision_boundary)
+# Determine whether the percept is correct (if percept falls on same as its mean)
+calibration_percepts_correct = (calibration_samples > decision_boundary) == (calibration_means > decision_boundary)
 
-# Define the bin edges for the 20-point bins
+# Calculate percepts' distance from the decision boundary
+calibration_distance_from_boundary = np.abs(calibration_samples - decision_boundary)
+
+# Define bin edges for calibration curve
 bin_edges = np.linspace(0, 3, 21)
 
-# Arrays to store bin centers and confidence values for correct and incorrect outcomes
-bin_centers = []
-confidence_values_correct = []
-confidence_values_incorrect = []
-sem_values_correct = []
-sem_values_incorrect = []
+# Arrays to store calibration curve data
+calibration_bin_centers = []
+calibration_confidence_values = []
+calibration_sem_values = []
 
-# Bias to adjust the confidence level at neutral evidence to 0.75
-neutral_confidence = 0.75
+# Calculate calibration curve
+for i in range(len(bin_edges) - 1):
+    # Find indices of percepts that fall into the current bin
+    bin_indices = np.where((calibration_distance_from_boundary >= bin_edges[i]) &
+                           (calibration_distance_from_boundary < bin_edges[i + 1]))[0]
+    # Calculate center of the bins to know where to plot the points on x-axis in calibration curve
+    bin_center = (bin_edges[i] + bin_edges[i + 1]) / 2
+    calibration_bin_centers.append(bin_center)
 
-# Calculate confidence for each bin
+    # Get correct percepts for the current bin using indices
+    bin_calibration_percepts_correct = calibration_percepts_correct[bin_indices]
+
+    # Calculate the mean and SEM of each bin
+    if len(bin_calibration_percepts_correct) > 0:
+        confidence = np.mean(bin_calibration_percepts_correct)
+        sem = calculate_sem(bin_calibration_percepts_correct)
+    else:
+        confidence = 0
+        sem = 0
+
+    calibration_confidence_values.append(confidence)
+    calibration_sem_values.append(sem)
+
+calibration_bin_centers = np.array(calibration_bin_centers)
+calibration_confidence_values = np.array(calibration_confidence_values)
+calibration_sem_values = np.array(calibration_sem_values)
+
+# Signature 2: Vevaiometric Curve
+
+means = np.linspace(-3, 3, num_trials)
+percepts = np.random.normal(means, sigma)
+
+# Determine whether the percept is correct or incorrect
+percepts_correct = (percepts > decision_boundary) == (means > decision_boundary)
+percepts_incorrect = ~percepts_correct  # Incorrect percepts are the opposite of correct percepts
+
+# Calculate MEANS' distance from the decision boundary
+distance_from_boundary = np.abs(means - decision_boundary)
+
+# Arrays to store vevaiometric curve data
+vevaiometric_bin_centers = []
+vevaiometric_confidence_correct = []
+vevaiometric_confidence_incorrect = []
+vevaiometric_sem_correct = []
+vevaiometric_sem_incorrect = []
+
+# Calculate vevaiometric curve using calibration data
 for i in range(len(bin_edges) - 1):
     # Find indices of percepts that fall into the current bin
     bin_indices = np.where((distance_from_boundary >= bin_edges[i]) & (distance_from_boundary < bin_edges[i + 1]))[0]
-    # np.where returns percepts from each bin depending on their distance from DB
-    # bin_edges[i + 1] represents upper boundary of current bin
-    # purpose of [0] here is to get the actual array of indices from the tuple returned by np.where
 
-    # Get samples and outcomes for the current bin using indices
-    bin_percepts_correct = percepts_correct[bin_indices]
-    bin_percepts_incorrect = percepts_incorrect[bin_indices]
+    if len(bin_indices) > 0:
+        bin_center = (bin_edges[i] + bin_edges[i + 1]) / 2
+        vevaiometric_bin_centers.append(bin_center)
 
-    # Calculate the center of the bins to know where to plot the points on the x-axis
-    bin_center = (bin_edges[i] + bin_edges[i + 1]) / 2
-    bin_centers.append(bin_center)
+        bin_percepts_correct = percepts_correct[bin_indices]
+        bin_percepts_incorrect = percepts_incorrect[bin_indices]
 
-    # Calculate the confidence for correct and incorrect outcomes
-    if len(bin_percepts_correct) > 0:
-        confidence_correct = np.mean(bin_percepts_correct)
-        confidence_incorrect = np.mean(bin_percepts_incorrect)
-        confidence_correct = 0.5 + (neutral_confidence - 0.5) * (confidence_correct / 0.5)
-        confidence_incorrect = 0.5 + (neutral_confidence - 0.5) * (confidence_incorrect / 0.5)
+        # Calculate confidence for correct percepts
+        bin_confidences_correct = []
+        for percept in percepts[bin_indices][bin_percepts_correct]:
+            percept_distance = np.abs(percept - decision_boundary)
+            closest_bin_index = np.argmin(np.abs(calibration_bin_centers - percept_distance))
+            confidence = calibration_confidence_values[closest_bin_index]
+            bin_confidences_correct.append(confidence)
 
-        # Calculate SEM
-        sem_correct = calculate_sem(bin_percepts_correct)
-        sem_incorrect = calculate_sem(bin_percepts_incorrect)
+        # Calculate confidence for incorrect percepts
+        bin_confidences_incorrect = []
+        for percept in percepts[bin_indices][bin_percepts_incorrect]:
+            percept_distance = np.abs(percept - decision_boundary)
+            closest_bin_index = np.argmin(np.abs(calibration_bin_centers - percept_distance))
+            confidence = calibration_confidence_values[closest_bin_index]
+            bin_confidences_incorrect.append(confidence)
 
-    else:
-        confidence_correct = 0.5
-        confidence_incorrect = 0.5
+        if len(bin_confidences_correct) > 0:
+            mean_confidence_correct = np.mean(bin_confidences_correct)
+            sem_correct = calculate_sem(bin_confidences_correct)
+        else:
+            mean_confidence_correct = 0
+            sem_correct = 0
 
-    confidence_values_correct.append(confidence_correct)
-    confidence_values_incorrect.append(confidence_incorrect)
-    sem_values_correct.append(sem_correct)
-    sem_values_incorrect.append(sem_incorrect)
-    # this appends (adds) the calculated midpoints (bin_center) to the bin_centers array created above
+        if len(bin_confidences_incorrect) > 0:
+            mean_confidence_incorrect = np.mean(bin_confidences_incorrect)
+            sem_incorrect = calculate_sem(bin_confidences_incorrect)
+        else:
+            mean_confidence_incorrect = 0
+            sem_incorrect = 0
 
-# Convert lists to arrays
-bin_centers = np.array(bin_centers)
-confidence_values_correct = np.array(confidence_values_correct)
-confidence_values_incorrect = np.array(confidence_values_incorrect)
-sem_values_correct = np.array(sem_values_correct)
-sem_values_incorrect = np.array(sem_values_incorrect)
+        vevaiometric_confidence_correct.append(mean_confidence_correct)
+        vevaiometric_confidence_incorrect.append(mean_confidence_incorrect)
+        vevaiometric_sem_correct.append(sem_correct)
+        vevaiometric_sem_incorrect.append(sem_incorrect)
 
-# Plotting
-plt.figure(figsize=(10, 10))
-plt.errorbar(bin_centers, confidence_values_correct, yerr=sem_values_correct, fmt='g-', label='Correct', capsize=5)
-plt.errorbar(bin_centers, confidence_values_incorrect, yerr=sem_values_incorrect, fmt='r-', label='Incorrect', capsize=5)
-plt.axhline(y=0.75, color='k', linestyle='--')  # Line at y=0.75
-plt.xlabel('Discriminability')
+vevaiometric_bin_centers = np.array(vevaiometric_bin_centers)
+vevaiometric_confidence_correct = np.array(vevaiometric_confidence_correct)
+vevaiometric_confidence_incorrect = np.array(vevaiometric_confidence_incorrect)
+vevaiometric_sem_correct = np.array(vevaiometric_sem_correct)
+vevaiometric_sem_incorrect = np.array(vevaiometric_sem_incorrect)
+
+# Plot Calibration Curve
+plt.figure(figsize=(10, 5))
+plt.errorbar(calibration_bin_centers, calibration_confidence_values, yerr=calibration_sem_values, fmt='b-', capsize=5)
+plt.axhline(y=0.5, color='gray', linestyle='--')
+plt.xlabel('Distance to DB')
+plt.ylabel('Confidence')
+plt.ylim(0, 1)
+plt.title('Calibration Curve')
+plt.show()
+
+# Plot Vevaiometric Curve (Correct and Incorrect)
+plt.figure(figsize=(10, 5))
+plt.errorbar(vevaiometric_bin_centers, vevaiometric_confidence_correct, yerr=vevaiometric_sem_correct, fmt='g-',
+             label='Correct', capsize=5)
+plt.errorbar(vevaiometric_bin_centers, vevaiometric_confidence_incorrect, yerr=vevaiometric_sem_incorrect, fmt='r-',
+             label='Incorrect', capsize=5)
+plt.axhline(y=0.5, color='k', linestyle='--')
+plt.xlabel('Discriminability (Mean Distance to DB)')
 plt.ylabel('Confidence')
 plt.ylim(0.5, 1)
-plt.title('Vevaiometric Curve')
+plt.title('Vevaiometric Curve Using Calibration Curve')
 plt.legend()
 plt.show()
 
