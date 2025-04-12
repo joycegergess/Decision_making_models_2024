@@ -1,0 +1,39 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Parameters
+mu = 0
+small_sigma = 0.2
+large_sigma = 1.0
+
+# X range
+x = np.linspace(-2, 2, 1000)
+
+# Gaussian PDFs
+small_dist = (1 / (small_sigma * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mu) / small_sigma) ** 2)
+large_dist = (1 / (large_sigma * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mu) / large_sigma) ** 2)
+
+# Plot
+fig, ax = plt.subplots(figsize=(6, 6))
+
+ax.plot(x, small_dist, color='red', label='Small sigma', linewidth=2)
+ax.plot(x, large_dist, color='blue', label='Large sigma', linewidth=2)
+
+line1 = plt.Line2D([0.25, 0.25], [0, ax.get_ylim()[1]], color='green', linestyle='--', linewidth=2)
+ax.add_line(line1)
+
+line2 = plt.Line2D([1.0, 1.0], [0, ax.get_ylim()[1]], color='gold', linestyle='--', linewidth=2)
+ax.add_line(line2)
+
+
+ax.set_xlim(-2, 2)
+ax.set_ylim(0, max(small_dist.max(), large_dist.max()) * 1.1)
+ax.set_xlabel("Percept Value", fontsize=12)
+ax.set_ylabel("Probability Density", fontsize=12)
+ax.set_title("Effect of Sigma and Decision Boundary on Perceptual Distributions", fontsize=12)
+ax.grid(True, alpha=0.3, linewidth=1)
+ax.legend()
+
+plt.tight_layout()
+plt.savefig("dist_smallvslargesigma.svg", format="svg")
+plt.show()
