@@ -1,1 +1,1 @@
-The goal of this repository is to deposit decision-making models that will be used to design behavioral tasks in which cognitive variables, such as decision confidence, are inferred from behavioral readouts.
+The goal of this repository is to share the complete codebase used in my manuscript.
