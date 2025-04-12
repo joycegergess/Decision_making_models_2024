@@ -95,17 +95,17 @@ def calculate_prob_choosing_right_side(percepts, distance_from_boundary, distanc
 bin_centers = (bins[:-1] + bins[1:]) / 2
 
 # Plot
-plt.figure(figsize=(10, 6))
-plt.errorbar(bin_centers, prob_choosing_right_low_conf, yerr=sem_low_conf, label='Low conf', color='blue', marker='o', linestyle='-')
-plt.errorbar(bin_centers, prob_choosing_right_med_conf, yerr=sem_med_conf, label='Med conf', color='green', marker='o', linestyle='-')
-plt.errorbar(bin_centers, prob_choosing_right_high_conf, yerr=sem_high_conf, label='High conf', color='red', marker='o', linestyle='-')
-plt.xlabel('Discriminability')
-plt.ylabel('Choosing Right')
-plt.title('Conditioned Psychometric')
-plt.legend()
-plt.grid(True)
-plt.axhline(0.5, color='grey', linestyle='--')
+plt.figure(figsize=(6, 6))
+plt.errorbar(bin_centers, prob_choosing_right_low_conf, yerr=sem_low_conf, label='Low conf', color='blue', marker='o', linestyle='-', linewidth=2)
+plt.errorbar(bin_centers, prob_choosing_right_med_conf, yerr=sem_med_conf, label='Med conf', color='green', marker='o', linestyle='-', linewidth=2)
+plt.errorbar(bin_centers, prob_choosing_right_high_conf, yerr=sem_high_conf, label='High conf', color='red', marker='o', linestyle='-', linewidth=2)
+plt.xlabel('Discriminability (Mean Distance to DB)', fontsize=16)
+plt.ylabel('P(Choosing Right-Side)', fontsize=16)
+plt.title('Conditioned Psychometric Curve', fontsize=18)
+plt.legend(fontsize=14)
+plt.grid(False)
 plt.show()
+
 
 
 
