@@ -1,0 +1,83 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Function to calculate SEM
+def calculate_sem(data):
+    return np.std(data, ddof=1) / np.sqrt(len(data))
+
+# Parameters
+num_trials = 10000
+sigma = 1.0  # Standard deviation (perceptual noise remains same for all trials)
+decision_boundary = 0  # Decision boundary (b)
+
+# Randomly generate 1000 different means (trials) which all differ in how far they are to the decision boundary
+means = np.random.uniform(-3, 3, num_trials)
+
+# Generate a sample for each trials based on its mean
+samples = np.random.normal(means, sigma)
+
+# Determine whether the percept is correct
+# A percept is correct if the sample is on the same side of the decision boundary as its mean
+percepts_correct = (samples > decision_boundary) == (means > decision_boundary)
+
+# Calculate absolute distance of each sample from decision-boundary, this will be my x-axis
+distance_from_boundary = np.abs(samples - decision_boundary)
+
+# Define the bin edges for the 20-point bins
+bin_edges = np.linspace(0, 3, 21)
+
+# Arrays to store bin centers and confidence values
+bin_centers = []
+confidence_values = []
+sem_values = []
+
+# Calculate confidence for each bin
+for i in range(len(bin_edges) - 1):
+    # Find indices of percepts that fall into the current bin
+    bin_indices = np.where((distance_from_boundary >= bin_edges[i]) & (distance_from_boundary < bin_edges[i + 1]))[0]
+        # np.where returns percepts from each bin depending on their distance from DB
+        # bin_edges[i + 1] represents upper boundary of current bin
+        # purpose of [0] here is to get the actual array of indices from the tuple returned by np.where
+
+    # Get samples and outcomes for the current bin using indices
+    bin_samples = samples[bin_indices]
+    bin_percepts_correct = percepts_correct[bin_indices]
+
+    # Calculate center of the bins to know where to plot the points on x-axis
+    bin_center = (bin_edges[i] + bin_edges[i + 1]) / 2
+        # this caclulates midpoint of current bin
+    bin_centers.append(bin_center)
+        # this appends (adds) the calculated midpoints (bin_center) to the bin_centers array created above
+
+    # Calculate the confidence: proportion of correct outcomes
+    if len(bin_percepts_correct) > 0:
+        # this code allows me to check if bin_outcomes is not empty (has at least one generated percept)
+        # if bin has outcomes, can calculate the mean
+        confidence = np.mean(bin_percepts_correct)  # Outcomes are binary (0 and 1), mean is proportion of 1s (correct outcomes)
+        sem = calculate_sem(bin_percepts_correct)
+    else:
+        confidence = 0  # If the bin has no outcomes, set confidence to 0
+        sem = 0
+
+    confidence_values.append(confidence)
+    # adds calculated confidence values to confidence_values list
+    sem_values.append(sem)
+
+# Convert lists to arrays
+bin_centers = np.array(bin_centers)
+confidence_values = np.array(confidence_values)
+sem_values = np.array(sem_values)
+
+# Iterate through bin centers and confidence values
+for center, confidence in zip(bin_centers, confidence_values):
+    print(f"Average Bin Mean: {center:.2f}, Confidence Value: {confidence:.2f}")
+
+# Plotting
+plt.figure(figsize=(10, 10))
+plt.errorbar(bin_centers, confidence_values, yerr=sem_values, color='blue', marker='o', linestyle='-', linewidth=3, capsize=5)
+
+plt.xlabel('Percept Distance to DB', fontsize=16)
+plt.ylabel('Confidence (P(Correct))', fontsize=16)
+plt.ylim(0.5, 1)  # Set y-axis limits from 0.5 to 1
+plt.title('Calibration Curve', fontsize=18)
+plt.show()
