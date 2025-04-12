@@ -1,0 +1,105 @@
+import pandas as pd
+import numpy as np
+from scipy.optimize import minimize
+from scipy.stats import norm
+import matplotlib.pyplot as plt
+from tqdm import tqdm  # progress bar
+
+# Set display options to avoid truncation
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', 0)
+
+
+def run_simulation(num_subjects, num_trials, sigma_values):
+    sigma = np.tile(sigma_values, (num_subjects, 1))
+
+    # Sample mu from a U-shaped Beta(0.5, 0.5) and map to [-1, 1]
+    mu = np.random.uniform(-2, 2, (num_subjects, num_trials))
+    boundary = np.random.uniform(-1, 1, (num_subjects, num_trials))
+    percepts = np.random.normal(mu, sigma)
+
+    decisions = np.where(percepts > boundary, 'right', 'left')
+    trials = np.tile(np.arange(num_trials), num_subjects)
+    subjects = np.repeat(np.arange(num_subjects), num_trials)
+
+    mu_flattened = mu.flatten()
+    percepts_flattened = percepts.flatten()
+    boundary_flattened = boundary.flatten()
+    decisions_flattened = decisions.flatten()
+
+    results_df = pd.DataFrame({
+        'subject': subjects,
+        'trial': trials,
+        'mu': mu_flattened,
+        'percept': percepts_flattened,
+        'boundary': boundary_flattened,
+        'sigma': np.tile(sigma.flatten(), num_trials),
+        'decision': decisions_flattened
+    })
+
+    return results_df
+
+# Log-Likelihood Function (Vectorized)
+def log_likelihood(params, data):
+    boundary, sigma = params
+    epsilon = 1e-10
+
+    cdf_vals = norm.cdf(boundary, loc=data['mu'].values, scale=sigma)
+    prob_right = np.maximum(1 - cdf_vals, epsilon)
+    prob_left = np.maximum(cdf_vals, epsilon)
+
+    log_likelihood_values = np.log(np.where(data['decision'] == 'right', prob_right, prob_left))
+    return -log_likelihood_values.sum()
+
+# Parameter Inference Function (Vectorized)
+def infer_parameters(results_df):
+    inferred_params = []
+
+    for subject in results_df['subject'].unique():
+        subject_data = results_df[results_df['subject'] == subject]
+        initial_guess = [0.5, 0.5]
+        bounds = [(-1, 1), (0.1, 2)]
+        result = minimize(log_likelihood, initial_guess, args=(subject_data,), bounds=bounds)
+        inferred_params.append({
+            'subject': subject,
+            'boundary': result.x[0],
+            'sigma': result.x[1]
+        })
+
+    return pd.DataFrame(inferred_params)
+
+# Compute MSE for groups of trials and fixed sigmas with progress bar
+def compute_mse_for_groups_of_trials_and_boundaries(true_sigmas, num_subjects, num_trials, group_size=10):
+    mse_matrix = np.zeros((len(true_sigmas), num_trials // group_size))
+
+    for idx, true_sigma in enumerate(tqdm(true_sigmas, desc="Computing MSE")):
+        results_df = run_simulation(num_subjects, num_trials, true_sigma)
+
+        for group in range(num_trials // group_size):
+            end_trial = (group + 1) * group_size
+            subset = results_df[results_df['trial'] < end_trial]
+            inferred_params_df = infer_parameters(subset)
+            mse = np.mean((inferred_params_df['sigma'] - true_sigma) ** 2)
+            mse_matrix[idx, group] = mse
+
+    return mse_matrix
+
+# Run and plot
+true_sigmas = np.linspace(0.1, 1, 50)
+num_subjects = 100
+num_trials = 500
+mse_matrix = compute_mse_for_groups_of_trials_and_boundaries(true_sigmas, num_subjects, num_trials, group_size=10)
+
+plt.figure(figsize=(10, 8))
+plt.imshow(mse_matrix, aspect='auto', cmap='viridis', origin='lower', interpolation='nearest',
+           extent=[0, num_trials, 0.1, 1])
+cbar = plt.colorbar()  # Colorbar automatically created
+cbar.set_label('MSE of Inferred Sigma', fontsize=16)
+plt.xlabel('Trials', fontsize=16)
+plt.ylabel('True Sigma', fontsize=16)
+plt.title('MSE of Inferred Sigma (Uniformly Distributed Evidence)', fontsize=18)
+
+plt.yticks(np.linspace(0.1, 1, 10))
+plt.xticks(np.arange(0, num_trials + 1, step=50))
+plt.savefig("mse_sigma_beta.svg", format='svg')
+plt.show()
