@@ -1,0 +1,113 @@
+import pandas as pd
+import numpy as np
+from scipy.optimize import minimize
+from scipy.stats import norm
+import matplotlib.pyplot as plt
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+from tqdm import tqdm
+
+# Set display options to avoid truncation
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', 0)
+
+# Simulation Function (Vectorized)
+def run_simulation(num_subjects, num_trials, true_boundary):
+    sigma = np.random.uniform(0.1, 1.0, num_subjects)
+    mu = np.random.uniform(-2, 2, (num_subjects, num_trials))
+    percepts = np.random.normal(mu, sigma[:, None])
+
+    decisions = np.where(percepts > true_boundary, 'right', 'left')  # Decision based on percepts and varying boundary
+    trials = np.tile(np.arange(num_trials), num_subjects)  # Repeat trial numbers for all subjects
+    subjects = np.repeat(np.arange(num_subjects), num_trials)  # Repeat subject numbers for all trials
+
+    # Create DataFrame for results
+    results_df = pd.DataFrame({
+        'subject': subjects,
+        'trial': trials,
+        'mu': mu.flatten(),
+        'percept': percepts.flatten(),
+        'boundary': true_boundary,  # Varying boundary
+        'sigma': np.tile(sigma, num_trials),
+        'decision': decisions.flatten()
+    })
+
+    return results_df
+
+# Log-Likelihood Function (Vectorized)
+def log_likelihood(params, data):
+    boundary, sigma = params
+    epsilon = 1e-10  # Small value to avoid log(0)
+
+    # Vectorized calculation of CDF values for all decisions
+    cdf_vals = norm.cdf(boundary, loc=data['mu'].values, scale=sigma)
+    prob_right = np.maximum(1 - cdf_vals, epsilon)  # Probabilities for 'right' decision
+    prob_left = np.maximum(cdf_vals, epsilon)  # Probabilities for 'left' decision
+
+    # Log-likelihood for all decisions
+    log_likelihood_values = np.log(np.where(data['decision'] == 'right', prob_right, prob_left))
+    return -log_likelihood_values.sum()
+
+# Parameter Inference Function (Vectorized)
+def infer_parameters_for_subject(subject, results_df):
+    subject_data = results_df[results_df['subject'] == subject]
+    initial_guess = [0.5, 0.5]  # boundary, sigma
+    bounds = [(-1, 1), (0.1, 2)]  # Boundary between -1 and 1, sigma between 0.1 and 2
+    result = minimize(log_likelihood, initial_guess, args=(subject_data,), bounds=bounds)
+    return {
+        'subject': subject,
+        'boundary': result.x[0],
+        'sigma': result.x[1]
+    }
+
+def infer_parameters(results_df):
+    # Removed tqdm here to avoid progress bar for each subject
+    with ProcessPoolExecutor() as executor:
+        results = list(
+            executor.map(partial(infer_parameters_for_subject, results_df=results_df), results_df['subject'].unique())
+        )
+    return pd.DataFrame(results)
+
+# Compute MSE for groups of trials (e.g., every 10 trials) and fixed decision boundaries
+def compute_mse_for_groups_of_trials_and_boundaries(true_boundaries, num_subjects, num_trials, group_size=10):
+    mse_matrix = np.zeros((len(true_boundaries), num_trials // group_size))  # Initialize a matrix to store MSE values
+
+    for idx, true_boundary in enumerate(tqdm(true_boundaries, desc="Processing boundaries")):  # Keep tqdm here
+        results_df = run_simulation(num_subjects, num_trials, true_boundary)
+
+        # Iterate over groups of trials (e.g., 10 trials at a time)
+        for group in range(num_trials // group_size):  # Divide trials into groups of size `group_size`
+            start_trial = group * group_size
+            end_trial = (group + 1) * group_size
+            subset = results_df[results_df['trial'] <= end_trial]  # Use trials up to the current group end
+            inferred_params_df = infer_parameters(subset)  # Infer parameters
+            mse = np.mean((inferred_params_df['boundary'] - true_boundary) ** 2)  # MSE for this group of trials
+            mse_matrix[idx, group] = mse  # Store MSE
+
+    return mse_matrix
+
+# Main execution block
+if __name__ == '__main__':
+    # Compute MSE for each group of trials and each fixed decision boundary
+    true_boundaries = np.linspace(-1, 1, 50)
+    num_subjects = 100
+    num_trials = 300
+
+    # Compute MSE for groups of trials (every 10 trials)
+    mse_matrix = compute_mse_for_groups_of_trials_and_boundaries(true_boundaries, num_subjects, num_trials,
+                                                                 group_size=10)
+
+    # Plot Heatmap: MSE as a function of trial group and fixed decision boundary
+    plt.figure(figsize=(10, 8))
+    plt.imshow(mse_matrix, aspect='auto', cmap='viridis', origin='lower', interpolation='nearest',
+               extent=[0, num_trials, -1, 1])  # Ensure y-axis represents true boundaries correctly
+    cbar = plt.colorbar()  # Colorbar automatically created
+    cbar.set_label('MSE of Inferred DB', fontsize=16)
+    plt.xlabel('Trials', fontsize=16)
+    plt.ylabel('Fixed Decision Boundary', fontsize=16)
+    plt.title('Inferred Boundary MSE Across Trials & Fixed DB', fontsize=18)
+
+    plt.yticks(np.linspace(-1, 1, 10))  
+    plt.xticks(np.arange(0, num_trials + 1, step=50))  
+
+    plt.show()
