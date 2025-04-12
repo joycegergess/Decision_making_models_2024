@@ -1,25 +1,25 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 # Function to calculate SEM
 def calculate_sem(data):
     return np.std(data, ddof=1) / np.sqrt(len(data))
 
-# Parameters
-num_trials = 10000
+# Parameters for calibration curve
+num_trials_calibration = 20000  # Calibration curve uses 20,000 trials
+num_trials_vevaiometric = 300   # Vevaiometric curve uses 200 trials
 sigma = 1.0  # Standard deviation (perceptual noise remains the same for all trials)
 decision_boundary = 0  # Decision boundary (b)
 
-# Signature 1: Calibration Curve
+# Signature 1: Calibration Curve (20,000 trials)
 
 # Randomly generate different means for trials (for calibration curve)
-calibration_means = np.random.uniform(-3, 3, num_trials)
+calibration_means = np.random.uniform(-3, 3, num_trials_calibration)
 
 # Generate samples for calibration curve
 calibration_samples = np.random.normal(calibration_means, sigma)
 
-# Determine whether the percept is correct (if percept falls on same as its mean)
+# Determine whether the percept is correct (if percept falls on same side as its mean)
 calibration_percepts_correct = (calibration_samples > decision_boundary) == (calibration_means > decision_boundary)
 
 # Calculate percepts' distance from the decision boundary
@@ -38,14 +38,13 @@ for i in range(len(bin_edges) - 1):
     # Find indices of percepts that fall into the current bin
     bin_indices = np.where((calibration_distance_from_boundary >= bin_edges[i]) &
                            (calibration_distance_from_boundary < bin_edges[i + 1]))[0]
-    # Calculate center of the bins to know where to plot the points on x-axis in calibration curve
     bin_center = (bin_edges[i] + bin_edges[i + 1]) / 2
     calibration_bin_centers.append(bin_center)
 
-    # Get correct percepts for the current bin using indices
+    # Get correct percepts for the current bin
     bin_calibration_percepts_correct = calibration_percepts_correct[bin_indices]
 
-    # Calculate the mean and SEM of each bin
+    # Calculate the mean confidence and SEM of each bin
     if len(bin_calibration_percepts_correct) > 0:
         confidence = np.mean(bin_calibration_percepts_correct)
         sem = calculate_sem(bin_calibration_percepts_correct)
@@ -60,9 +59,9 @@ calibration_bin_centers = np.array(calibration_bin_centers)
 calibration_confidence_values = np.array(calibration_confidence_values)
 calibration_sem_values = np.array(calibration_sem_values)
 
-# Signature 2: Vevaiometric Curve
+# Signature 2: Vevaiometric Curve (300 trials)
 
-means = np.linspace(-3, 3, num_trials)
+means = np.linspace(-3, 3, num_trials_vevaiometric)
 percepts = np.random.normal(means, sigma)
 
 # Determine whether the percept is correct or incorrect
@@ -132,27 +131,25 @@ vevaiometric_confidence_incorrect = np.array(vevaiometric_confidence_incorrect)
 vevaiometric_sem_correct = np.array(vevaiometric_sem_correct)
 vevaiometric_sem_incorrect = np.array(vevaiometric_sem_incorrect)
 
-# Plot Calibration Curve
-plt.figure(figsize=(10, 5))
+# Plot Calibration Curve (20,000 trials)
+plt.figure(figsize=(8, 5))
 plt.errorbar(calibration_bin_centers, calibration_confidence_values, yerr=calibration_sem_values, fmt='b-', capsize=5)
 plt.axhline(y=0.5, color='gray', linestyle='--')
 plt.xlabel('Distance to DB')
 plt.ylabel('Confidence')
 plt.ylim(0, 1)
-plt.title('Calibration Curve')
+plt.title('Calibration Curve (20,000 trials)')
 plt.show()
 
-# Plot Vevaiometric Curve (Correct and Incorrect)
-plt.figure(figsize=(10, 5))
+# Plot Vevaiometric Curve (300 trials, Correct and Incorrect)
+plt.figure(figsize=(6, 6))
 plt.errorbar(vevaiometric_bin_centers, vevaiometric_confidence_correct, yerr=vevaiometric_sem_correct, fmt='g-',
-             label='Correct', capsize=5)
+             label='Correct', capsize=5, linewidth=2.5)
 plt.errorbar(vevaiometric_bin_centers, vevaiometric_confidence_incorrect, yerr=vevaiometric_sem_incorrect, fmt='r-',
-             label='Incorrect', capsize=5)
-plt.axhline(y=0.5, color='k', linestyle='--')
-plt.xlabel('Discriminability (Mean Distance to DB)')
-plt.ylabel('Confidence')
+             label='Incorrect', capsize=5, linewidth=2.5)
+plt.xlabel('Discriminability (Mean Distance to DB)', fontsize=16)
+plt.ylabel('Confidence', fontsize=14)
 plt.ylim(0.5, 1)
-plt.title('Vevaiometric Curve Using Calibration Curve')
+plt.title('Vevaiometric Curve', fontsize=18)
 plt.legend()
 plt.show()
-
