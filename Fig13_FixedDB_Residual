@@ -1,0 +1,112 @@
+import pandas as pd
+import numpy as np
+from scipy.optimize import minimize
+from scipy.stats import norm
+import matplotlib.pyplot as plt
+
+# Set display options to avoid truncation
+pd.set_option('display.max_columns', None)  # Show all columns
+pd.set_option('display.width', 0)  # Disable line wrapping
+
+
+# Simulation Function (Vectorized)
+def run_simulation(num_subjects, num_trials):
+    sigma = np.random.uniform(0.1, 1.0, num_subjects)  # All subjects' sigma values
+    mu = np.random.uniform(-2, 2, (num_subjects, num_trials))  # All subjects' mu values
+    percepts = np.random.normal(mu, sigma[:, None])  # Broadcasting: Generate percepts for all trials and subjects
+
+    decisions = np.where(percepts > 0.2, 'right', 'left')  # Decision based on percepts and fixed boundary
+    trials = np.tile(np.arange(num_trials), num_subjects)  # Repeat trial numbers for all subjects
+    subjects = np.repeat(np.arange(num_subjects), num_trials)  # Repeat subject numbers for all trials
+
+    # Create DataFrame for results
+    results_df = pd.DataFrame({
+        'subject': subjects,
+        'trial': trials,
+        'mu': mu.flatten(),
+        'percept': percepts.flatten(),
+        'boundary': 0.2,  # Fixed boundary
+        'sigma': np.tile(sigma, num_trials),
+        'decision': decisions.flatten()
+    })
+
+    # Generate true parameters for each subject
+    true_params_df = pd.DataFrame({
+        'subject': np.arange(num_subjects),
+        'boundary': 0.2,
+        'sigma': sigma
+    })
+
+    return results_df, true_params_df
+
+
+# Run the simulation
+num_subjects = 100
+num_trials = 100
+results_df, true_params_df = run_simulation(num_subjects, num_trials)
+
+
+# Log-Likelihood Function (Vectorized)
+def log_likelihood(params, data):
+    boundary, sigma = params
+    epsilon = 1e-10  # Small value to avoid log(0)
+
+    # Vectorized calculation of CDF values for all decisions
+    cdf_vals = norm.cdf(boundary, loc=data['mu'].values, scale=sigma)
+    prob_right = np.maximum(1 - cdf_vals, epsilon)  # Probabilities for 'right' decision
+    prob_left = np.maximum(cdf_vals, epsilon)  # Probabilities for 'left' decision
+
+    # Log-likelihood for all decisions
+    log_likelihood_values = np.log(np.where(data['decision'] == 'right', prob_right, prob_left))
+    return -log_likelihood_values.sum()
+
+
+# Parameter Inference Function (Vectorized)
+def infer_parameters(results_df):
+    inferred_params = []
+
+    for subject in results_df['subject'].unique():
+        subject_data = results_df[results_df['subject'] == subject]
+        initial_guess = [0.5, 0.5]  # boundary, sigma
+        bounds = [(0, 1), (0.1, 2)]
+        result = minimize(log_likelihood, initial_guess, args=(subject_data,), bounds=bounds)
+        inferred_params.append({
+            'subject': subject,
+            'boundary': result.x[0],
+            'sigma': result.x[1]
+        })
+
+    return pd.DataFrame(inferred_params)
+
+
+# Function to compute MSE across trials (Vectorized)
+def compute_mse_across_trials(results_df, boundary):
+    num_trials_list = results_df['trial'].unique()
+    mse_values = []
+    sem_values = []  # To store the standard error of the mean for each trial
+
+    for num_trials in num_trials_list:
+        subset = results_df[results_df['trial'] <= num_trials]  # Consider trials up to current trial
+        inferred_params_df = infer_parameters(subset)  # Infer parameters
+        mse = np.mean((inferred_params_df['boundary'] - boundary) ** 2)  # Compute MSE
+
+        # Compute SEM based on the inferred boundary values, not the squared errors
+        sem = np.std(inferred_params_df['boundary'] - boundary) / np.sqrt(len(inferred_params_df))
+
+        mse_values.append(mse)
+        sem_values.append(sem)
+
+    return num_trials_list, mse_values, sem_values
+
+
+# Compute and plot MSE with error bars
+num_trials_list, mse_values, sem_values = compute_mse_across_trials(results_df, 0.2)
+
+# Plot MSE with error bars
+plt.errorbar(num_trials_list, mse_values, yerr=sem_values, fmt='o-', capsize=5, label='MSE with SEM')
+plt.xlabel('Number of Trials', fontsize=16)
+plt.ylabel('MSE of Inferred Boundary', fontsize=16)
+plt.title('Inferred Boundary MSE Across Trials', fontsize=18)
+plt.legend(title='True Boundary = 0.2', labels=['MSE with SEM'], fontsize=14, title_fontsize=14)
+plt.savefig("inferred_fixedDB_mse.svg", format='svg')
+plt.show()
